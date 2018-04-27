@@ -64,6 +64,7 @@
             this.RepeatBox.TabIndex = 2;
             this.RepeatBox.Text = "Repeat";
             this.RepeatBox.UseVisualStyleBackColor = true;
+            this.RepeatBox.CheckedChanged += new System.EventHandler(this.RepeatBox_CheckedChanged);
             // 
             // StopBtn
             // 
