@@ -175,5 +175,14 @@ namespace Jukebox
             else
                 player.settings.setMode("shuffle", false);
         }
+
+        private void RepeatBox_CheckedChanged(object sender, EventArgs e)
+        {
+            //sets the player to repeat while the box is checked. When not checked, the player is set to stop repeating.
+            if (RepeatBox.Checked == true)
+                player.settings.setMode("Loop", true);
+            else
+                player.settings.setMode("Loop", true);
+        }
     }
 }
