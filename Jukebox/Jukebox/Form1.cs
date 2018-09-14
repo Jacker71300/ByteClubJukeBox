@@ -6,7 +6,6 @@ using WMPLib;
 
 namespace Jukebox
 {
-
     public partial class Form1 : Form
     {
         private WindowsMediaPlayer player = new WindowsMediaPlayer();
@@ -16,7 +15,6 @@ namespace Jukebox
         private IWMPPlaylist myPlaylist;
         private string currentSong = "";
         private Random rng = new Random();
-
 
         public Form1()
         {
@@ -55,13 +53,13 @@ namespace Jukebox
             //Play button plays media or pauses depending on whether or not it is currently playing
            if (!currentSong.Equals("") &&
                 player.currentMedia.sourceURL.IndexOf(SongSelector.Text) != -1 &&
-                player.playState != WMPLib.WMPPlayState.wmppsStopped)  //Current media is selected in the Song selector and the player is not stopped
+                player.playState != WMPPlayState.wmppsStopped)  //Current media is selected in the Song selector and the player is not stopped
             {
-                if (player.playState == WMPLib.WMPPlayState.wmppsPlaying)//Media is Playing
+                if (player.playState == WMPPlayState.wmppsPlaying)//Media is Playing
                 {
                     PauseClip();
                 }
-                else if (player.playState == WMPLib.WMPPlayState.wmppsPaused)//Media is Paused
+                else if (player.playState == WMPPlayState.wmppsPaused)//Media is Paused
                 {
                     ResumeClip();
                 }
@@ -114,7 +112,7 @@ namespace Jukebox
         {
             player.URL = fileDirectory + currentSong + ".mp3";
             player.controls.play();
-            CurrentSongNameLbl.Text = player.currentMedia.name;
+            NowPlaying.Text = "Now Playing: " + player.currentMedia.name;
             PlayBtn.Text = "Pause";
         }
 
@@ -128,7 +126,7 @@ namespace Jukebox
         private void EndClip()
         {
             player.controls.stop();
-            CurrentSongNameLbl.Text = "";
+            NowPlaying.Text = "Now Playing: ";
         }
 
         //Switches between two media files
@@ -248,7 +246,5 @@ namespace Jukebox
             player.controls.currentPosition = player.currentMedia.duration * (relative) / ((float)100);
             player.controls.play();
         }
-
-
     }
 }
