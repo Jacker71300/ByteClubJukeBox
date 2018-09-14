@@ -1,21 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Forms;
-using NAudio.Wave;
+using WMPLib;
 
 namespace Jukebox
 {
     public partial class Form1 : Form
     {
-        private WaveOut waveOut;
-
-        private ISampleProvider provider;
-        private AudioFileReader reader;
-
+        private WindowsMediaPlayer player = new WindowsMediaPlayer();
         private string fileDirectory = System.IO.Directory.GetCurrentDirectory().Substring(0, System.IO.Directory.GetCurrentDirectory().IndexOf("\\bin")).Replace("\\", "/") + "/Assets/AudioFiles/";
         private List<string> files = new List<string>();
-        private List<string> shuffledList;
-        private List<string> myPlaylist;
+        private IWMPPlaylist shuffledList;
+        private IWMPPlaylist myPlaylist;
         private string currentSong = "";
         private Random rng = new Random();
 
@@ -23,8 +20,8 @@ namespace Jukebox
         {
             InitializeComponent();
             //sets volume and sets the volume percent value.
-
             volumeBar.Value = volumeBar.Maximum / 2; 
+            player.settings.volume = volumeBar.Value;
             lblVolumePercent.Text = (volumeBar.Value.ToString() + "%");
 
 
@@ -43,37 +40,26 @@ namespace Jukebox
                 files[i] = files[i].Substring(start, (files[i].Length - 4) - start);
             }
 
-            //CreatePlaylist();
-            //CreateShuffleList();
+            CreatePlaylist();
+            CreateShuffleList();
 
             SongSelector.Items.Clear();
             SongSelector.Items.AddRange(files.ToArray());
             SongSelector.SelectedIndex = 0;
-
-            reader = new AudioFileReader(fileDirectory + "01 - Battery.mp3");
-            waveOut = new WaveOut();
-            waveOut.Init(reader);
-
-            provider = reader.ToSampleProvider(); //Here I get the samples
-            reader.Position = 0; //Go to the position 0 after reading the samples
-
-            waveOut.PlaybackStopped += (object sender, StoppedEventArgs e) =>
-            {
-                Console.WriteLine(e.Exception);
-                NextSong();
-            };
         }
 
         private void PlayBtn_Click(object sender, EventArgs e)
         { 
             //Play button plays media or pauses depending on whether or not it is currently playing
-           if (!currentSong.Equals(""))
+           if (!currentSong.Equals("") &&
+                player.currentMedia.sourceURL.IndexOf(SongSelector.Text) != -1 &&
+                player.playState != WMPPlayState.wmppsStopped)  //Current media is selected in the Song selector and the player is not stopped
             {
-                if (PlayBtn.Text.Equals("Pause"))//Media is Playing
+                if (player.playState == WMPPlayState.wmppsPlaying)//Media is Playing
                 {
                     PauseClip();
                 }
-                else //Media is Paused
+                else if (player.playState == WMPPlayState.wmppsPaused)//Media is Paused
                 {
                     ResumeClip();
                 }
@@ -124,32 +110,22 @@ namespace Jukebox
         //Plays a selection of media
         private void PlayClip(int index)
         {
-            waveOut.Stop();
-            reader.Close();
-
-            reader = new AudioFileReader(fileDirectory + currentSong + ".mp3");
-            waveOut = new WaveOut();
-            waveOut.Init(reader);
-
-            provider = reader.ToSampleProvider(); //Here I get the samples
-            reader.Position = 0; //Go to the position 0 after reading the samples
-
-            waveOut.Play();
-            NowPlaying.Text = "Now Playing: " + currentSong;
+            player.URL = fileDirectory + currentSong + ".mp3";
+            player.controls.play();
+            NowPlaying.Text = "Now Playing: " + player.currentMedia.name;
             PlayBtn.Text = "Pause";
         }
 
         //Pauses the media
-        private void PauseClip()
-        {
-            waveOut.Pause();
+        private void PauseClip(){
+            player.controls.pause();
             PlayBtn.Text = "Resume";
         }
 
         //Ends a media playback process
         private void EndClip()
         {
-            waveOut.Stop();
+            player.controls.stop();
             NowPlaying.Text = "Now Playing: ";
         }
 
@@ -163,12 +139,12 @@ namespace Jukebox
         //Resumes a paused clip
         private void ResumeClip()
         {
-            waveOut.Play();
+            player.controls.play();
             PlayBtn.Text = "Pause";
         }
 
         //Switches playlists (for a shuffled and unshuffled playlist)
-        /*private void SwitchPlaylist(IWMPPlaylist newPlaylist)
+        private void SwitchPlaylist(IWMPPlaylist newPlaylist)
         {
             int index = 0;
             for (int i = 0; i < newPlaylist.count; i++)
@@ -216,42 +192,50 @@ namespace Jukebox
                 names.RemoveAt(holder);
                 shuffledList.appendItem(song);
             }
-        }*/
+        }
 
         private void timer1_Tick(object sender, EventArgs e)
         {
-            progressBar.Maximum = (int)1000; // TODO: Make work
-            lblMax.Text = (int)waveOut.GetPosition() + "";
 
-            int pos = (int)waveOut.GetPosition();
-            progressBar.Value = 0; // TODO: FIX
+            if (progressBar.Maximum != player.currentMedia.duration) //If new song, sets progressbar maximum and mm:ss timestamp.
+            {
+                progressBar.Maximum = (int)player.currentMedia.duration;
+                lblMax.Text = player.currentMedia.durationString;
+            }
+
+            if (progressBar.Maximum <= progressBar.Value) //If song has ended, plays the next song
+            {
+                NextSong();
+            }
+
+
+            progressBar.Value = (int)player.controls.currentPosition;
 
             //sets the current position mm:ss timestamp.
-            if (pos == 0)
+            if (player.controls.currentPosition == 0)
                 lblPosition.Text = ("0");
             else
-                lblPosition.Text = pos + "";
+                lblPosition.Text = player.controls.currentPositionString;
    
         }
 
         private void ShuffleBox_CheckedChanged(object sender, EventArgs e)
         {
-            /*if (ShuffleBox.Checked)
+            if (ShuffleBox.Checked)
                 player.settings.setMode("shuffle", true);
             else
-                player.settings.setMode("shuffle", false);*/
+                player.settings.setMode("shuffle", false);
         }
 
         private void trackBar1_Scroll(object sender, EventArgs e)
         {
             //sets volume for the song using trackbar and changes percentage.
-            waveOut.Volume = volumeBar.Value / (float)volumeBar.Maximum;
+            player.settings.volume = volumeBar.Value;
             lblVolumePercent.Text = (volumeBar.Value.ToString()+"%");
         }
 
        private void progressBar_Click(object sender, EventArgs e)
         {
-            /*
             //finds mouse absolute location
             double absoluteMouse = (PointToClient(MousePosition).X - progressBar.Bounds.X);
             //computes factor of the width divided by 100 cast as double
@@ -260,7 +244,7 @@ namespace Jukebox
             double relative = absoluteMouse / factor;
             //converts the 1-100 value into decimal by dividing by 100 cast as double then plays to reset the song to current location
             player.controls.currentPosition = player.currentMedia.duration * (relative) / ((float)100);
-            player.controls.play();*/
+            player.controls.play();
         }
     }
 }
